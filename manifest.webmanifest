@@ -1,0 +1,14 @@
+{
+  "name": "凝神 · 专注力训练",
+  "short_name": "凝神",
+  "description": "七项注意力训练加专注计时，数据只存在本机",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#07080d",
+  "theme_color": "#07080d",
+  "lang": "zh-CN",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
