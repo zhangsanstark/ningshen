@@ -7,6 +7,8 @@
    - 面板是玻璃：半透明、细边、顶上一道高光，后面透出缓慢流动的极光。
    - 字用粗的黑体，数字用 DIN；全部是系统字体。
    默认深色；浅色主题用同一套结构，只换下面这组变量。
+   - --shell-top / --shell-bottom：安卓 App（android/ 里的外壳）把页面一直画到状态栏和手势条下面，
+     并把这两条的高度写进这两个变量，页眉、底部导航、训练舞台据此让开。网页版里没有这两个变量，按 0 算。
    ========================================================================== */
 
 :root {
@@ -108,7 +110,7 @@ p { text-wrap: pretty; }
 .tile-head h3 { margin: 0; }
 
 /* ---------- 页眉 ---------- */
-.top { max-width: var(--page); margin: 0 auto; padding: 20px var(--pad) 8px; padding-top: max(20px, env(safe-area-inset-top)); display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px; }
+.top { max-width: var(--page); margin: 0 auto; padding: 20px var(--pad) 8px; padding-top: max(env(safe-area-inset-top), 20px + var(--shell-top, 0px)); display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px; }
 .brand { display: inline-flex; align-items: center; gap: 11px; justify-self: start; font-size: 20px; font-weight: 800; letter-spacing: .1em; }
 .brand-mark { width: 30px; height: 30px; display: block; filter: drop-shadow(0 0 10px color-mix(in oklab, var(--b2) 70%, transparent)); }
 .nav { display: flex; gap: 2px; padding: 5px; border-radius: 999px; background: var(--card); border: 1px solid var(--stroke); backdrop-filter: blur(20px) saturate(1.5); -webkit-backdrop-filter: blur(20px) saturate(1.5); }
@@ -119,7 +121,7 @@ p { text-wrap: pretty; }
 .tool:hover { color: var(--text); border-color: var(--stroke-2); }
 .tool:active { transform: scale(.92); }
 
-main { max-width: var(--page); margin: 0 auto; padding: 18px var(--pad) 120px; }
+main { max-width: var(--page); margin: 0 auto; padding: 18px var(--pad) calc(120px + var(--shell-bottom, 0px)); }
 .foot { margin-top: 56px; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 26px; color: var(--text-3); font-size: 12.5px; letter-spacing: .08em; }
 
 @keyframes rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
@@ -299,8 +301,8 @@ main { max-width: var(--page); margin: 0 auto; padding: 18px var(--pad) 120px; }
 
 /* ---------- 训练舞台 ---------- */
 body.playing { overflow: hidden; }
-.stage { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; background: radial-gradient(900px 480px at 50% -16%, color-mix(in oklab, var(--c1) 30%, transparent), transparent 70%), var(--bg); animation: fade .3s ease both; }
-.stage-top { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; padding: 16px 24px; padding-top: max(16px, env(safe-area-inset-top)); }
+.stage { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; padding-bottom: var(--shell-bottom, 0px); background: radial-gradient(900px 480px at 50% -16%, color-mix(in oklab, var(--c1) 30%, transparent), transparent 70%), var(--bg); animation: fade .3s ease both; }
+.stage-top { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; padding: 16px 24px; padding-top: max(env(safe-area-inset-top), 16px + var(--shell-top, 0px)); }
 .stage-title { display: flex; align-items: center; gap: 11px; font-weight: 800; white-space: nowrap; min-width: 0; }
 .stage-title i { width: 10px; height: 10px; border-radius: 50%; background: var(--grad); box-shadow: 0 0 12px var(--c1); }
 .stage-title small { font: 600 12.5px var(--font-num); color: var(--text-3); padding: 2px 9px; border-radius: 999px; border: 1px solid var(--stroke-2); }
@@ -313,7 +315,7 @@ body.playing { overflow: hidden; }
 /* 训练内容必须立刻完整显示，不能淡入：SART 的数字只亮 250 ms，N-back 的方块只亮 500 ms，第一题不能被动效吃掉 */
 .center-col { display: flex; flex-direction: column; align-items: center; gap: 22px; width: 100%; max-width: 640px; }
 @media (max-width: 560px) {
-  .stage-top { grid-template-columns: 1fr auto auto; padding: 12px 16px; }
+  .stage-top { grid-template-columns: 1fr auto auto; padding: 12px 16px; padding-top: calc(12px + var(--shell-top, 0px)); }
   .stage-title small, .link-btn .kbd { display: none; }
   .stage-progress { margin: 0 16px; }
 }
@@ -525,11 +527,11 @@ body.playing { overflow: hidden; }
 }
 @media (max-width: 720px) {
   :root { --pad: 16px; }
-  .top { grid-template-columns: 1fr auto; padding-top: max(14px, env(safe-area-inset-top)); }
+  .top { grid-template-columns: 1fr auto; padding-top: max(env(safe-area-inset-top), 14px + var(--shell-top, 0px)); }
   /* 导航移到底部，做成一条悬浮的玻璃 */
-  .nav { position: fixed; z-index: 20; left: 50%; bottom: max(14px, env(safe-area-inset-bottom)); transform: translateX(-50%); background: color-mix(in oklab, var(--bg) 70%, transparent); box-shadow: var(--shadow); }
+  .nav { position: fixed; z-index: 20; left: 50%; bottom: max(env(safe-area-inset-bottom), 14px + var(--shell-bottom, 0px)); transform: translateX(-50%); background: color-mix(in oklab, var(--bg) 70%, transparent); box-shadow: var(--shadow); }
   .nav a { padding: 10px 18px; }
-  main { padding-bottom: 120px; }
+  main { padding-bottom: calc(120px + var(--shell-bottom, 0px)); }
   .hello { flex-direction: column; align-items: flex-start; gap: 4px; margin: 12px 0 16px; }
   .hello span { order: -1; padding: 0; }
   .tile { border-radius: 24px; padding: 20px; }
