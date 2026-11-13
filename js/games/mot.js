@@ -12,7 +12,7 @@ export default {
     '停下后，点出所有目标球。全部答对速度加快，有错则减慢。',
   ],
   options: [
-    { key: 'targets', label: '目标数', def: 3, choices: [[2, '2 个'], [3, '3 个'], [4, '4 个']] },
+    { key: 'targets', label: '目标数', def: 3, choices: [[2, '2 个'], [3, '3 个'], [4, '4 个'], [5, '5 个']] },
     { key: 'trials', label: '轮数', def: 10, choices: [[6, '6 轮'], [10, '10 轮'], [20, '20 轮']] },
   ],
   variant: o => `${o.targets} 目标`,
@@ -20,7 +20,7 @@ export default {
   score: { label: '速度阈值', unit: '×', better: 'higher', digits: 2 },
 
   async run(ctx) {
-    const T = ctx.opts.targets, N = 8;
+    const T = ctx.opts.targets, N = T >= 5 ? 10 : 8; // 一共几颗球：盯 5 颗时加到 10 颗，不然剩下的太少、容易蒙对
     let speed = ctx.level ?? 0.8;
     const canvas = h('canvas', { class: 'mot-canvas' });
     const info = h('div', { class: 'pill-info' });

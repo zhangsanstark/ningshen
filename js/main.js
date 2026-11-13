@@ -203,6 +203,19 @@ function renderIntro(game) {
         class: opts[opt.key] === v ? 'on' : '',
         onclick: () => { opts[opt.key] = v; S.setOpts(game.id, { ...opts }); draw(); },
       }, l)))));
+    if (lv != null) { // 难度平时按表现自动调；想直接换一档，在这里自己改
+      const L = game.level;
+      const step = dir => {
+        S.setLevel(lkey, L.float ? clamp(lv * (dir > 0 ? 1.12 : 1 / 1.12), L.min, L.max) : clamp(lv + dir, L.min, L.max));
+        draw();
+      };
+      optRows.push(h('div', { class: 'opt-row' },
+        h('span', { class: 'lab' }, '难度'),
+        h('div', { class: 'opts stepper', title: '会按表现自动调整，也可以自己改' },
+          h('button', { 'aria-label': '降低难度', disabled: lv <= L.min, onclick: () => step(-1) }, '−'),
+          h('span', {}, levelLabel(game, lv)),
+          h('button', { 'aria-label': '提高难度', disabled: lv >= L.max, onclick: () => step(1) }, '+'))));
+    }
     const recent = list.slice(-20).map(s => s.score);
     root.replaceChildren(
       h('div', { class: 'crumb' },

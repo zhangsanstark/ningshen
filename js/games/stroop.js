@@ -67,7 +67,10 @@ export default {
     const plain = trials.filter(t => !t.byMeaning);
     const rtC = meanRT(plain.filter(t => t.congruent));
     const rtI = meanRT(plain.filter(t => !t.congruent));
-    const newLevel = adaptByAcc(level, acc);
+    let newLevel = adaptByAcc(level, acc);
+    // 明显有余力（几乎全对，反应时间还不到时限的一半）：一次升两级，不用一级一级磨
+    const rt = meanRT(trials);
+    if (acc >= 0.95 && rt && rt < win * 0.5) newLevel = Math.min(10, level + 2);
     const metrics = [
       ['正确率', pct(acc)],
       ['一致题反应', ms(rtC)],

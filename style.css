@@ -296,6 +296,11 @@ main { max-width: var(--page); margin: 0 auto; padding: 18px var(--pad) calc(120
 .opt-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .opt-row + .opt-row { margin-top: 10px; }
 .opt-row .lab { color: var(--text-3); font-size: 13px; min-width: 6em; }
+/* 难度：减号、当前这一档、加号 */
+.opts.stepper { align-items: center; }
+.opts.stepper span { min-width: 5.6em; padding: 0 6px; text-align: center; color: var(--text); font-size: 13.5px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.opts.stepper button { width: 38px; padding: 0; font-size: 18px; line-height: 1; }
+.opts.stepper button:disabled { opacity: .3; cursor: default; }
 .record .chart { margin-top: 20px; }
 .record .empty { color: var(--text-3); font-size: 13.5px; margin-top: 14px; }
 
@@ -357,6 +362,12 @@ body.playing { overflow: hidden; }
 .schulte { --n: 5; --w: min(92vw, 62vh, 560px); display: grid; grid-template-columns: repeat(var(--n), 1fr); grid-auto-rows: 1fr; gap: clamp(6px, 1.3vw, 10px); width: var(--w); aspect-ratio: 1; }
 .schulte .cell { border: 1px solid var(--stroke); border-radius: clamp(10px, 2vw, 18px); background: var(--card-2); color: var(--text); cursor: pointer; font: 700 calc(var(--w) / var(--n) * .4) var(--font-num); font-variant-numeric: tabular-nums; touch-action: manipulation; transition: background .3s, color .3s, box-shadow .3s, transform .1s; }
 .schulte .cell:active { transform: scale(.94); }
+/* 红蓝交替：两套数字靠颜色区分 */
+.schulte .cell.blue, .pill-info b.blue { color: #5aa2ff; }
+.schulte .cell.red, .pill-info b.red { color: #ff6b85; }
+:root[data-theme="light"] .schulte .cell.blue, :root[data-theme="light"] .pill-info b.blue { color: #1f6fe0; }
+:root[data-theme="light"] .schulte .cell.red, :root[data-theme="light"] .pill-info b.red { color: #e0355a; }
+.pill-info b.blue, .pill-info b.red { background: none; filter: none; }
 .schulte .cell.flash-good { background: var(--grad) !important; box-shadow: 0 0 34px -4px var(--c1) !important; transition: none; }
 
 /* 心算 */

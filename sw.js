@@ -1,11 +1,12 @@
 // 离线缓存：网络优先，失败时用缓存（保证更新后能及时生效）
 // 新增文件时要加进 ASSETS，并把 CACHE 版本号加一
-const CACHE = 'ningshen-v10';
+const CACHE = 'ningshen-v11';
 const ASSETS = [
   './', 'index.html', 'style.css', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png',
   'js/main.js', 'js/ui.js', 'js/art.js', 'js/figures.js', 'js/store.js', 'js/focus.js',
   'js/games/common.js', 'js/games/schulte.js', 'js/games/stroop.js', 'js/games/sart.js',
   'js/games/nback.js', 'js/games/mot.js', 'js/games/arith.js', 'js/games/breath.js',
+  ...[...'CHKLQRST'].map(l => `audio/letters/${l}.mp3`), // 双重 N-back 的字母读音
 ];
 
 self.addEventListener('install', e => {

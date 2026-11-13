@@ -103,6 +103,26 @@ export function tick() {
   try { tone(620, 0.07, 0.05); } catch { }
 }
 
+// ---------- 录好的短音（双重 N-back 的字母读音） ----------
+// 先全部读进来解码好，之后播放没有延迟。任何一步失败都返回 null，由调用的地方改用别的办法
+export async function loadClips(urls) {
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+    return await Promise.all(urls.map(async url => {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`${url} ${res.status}`);
+      return actx.decodeAudioData(await res.arrayBuffer());
+    }));
+  } catch { return null; }
+}
+export function playClip(buffer) {
+  try {
+    const src = actx.createBufferSource();
+    src.buffer = buffer; src.connect(actx.destination); src.start();
+  } catch { /* 放不出来就算了，不能让训练停下 */ }
+}
+
 // ---------- 背景音：三种噪音，现算现播，不用音频文件 ----------
 // white 各个频率一样多，听着清亮；pink 频率越高越少，柔和一些；brown 更偏低频，低沉
 // 返回 n 个采样，可以首尾相接循环播放

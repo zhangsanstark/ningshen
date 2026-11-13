@@ -1,4 +1,4 @@
-import { h, rand, shuffle, mean, pct } from '../ui.js';
+import { h, rand, shuffle, mean, pct, loadClips, playClip } from '../ui.js';
 import { dprime } from './common.js';
 
 const LETTERS = ['C', 'H', 'K', 'L', 'Q', 'R', 'S', 'T'];
@@ -54,7 +54,12 @@ export default {
 
   async run(ctx) {
     const dual = ctx.opts.mode === 'dual';
-    const useSpeech = dual && ctx.opts.audio === 'speech' && 'speechSynthesis' in window;
+    // 字母怎么念：先用自带的读音文件（audio/letters/）；读不进来就用浏览器的朗读；再不行就把字母显示在方块上
+    let clips = null, useSpeech = false;
+    if (dual && ctx.opts.audio === 'speech') {
+      clips = await loadClips(LETTERS.map(l => `audio/letters/${l}.mp3`));
+      useSpeech = !clips && 'speechSynthesis' in window;
+    }
     let n = ctx.level ?? 1;
     const cells = Array.from({ length: 9 }, (_, i) => h('div', { class: `nb-cell ${i === 4 ? 'nb-center' : ''}` }));
     const grid = h('div', { class: 'nb-grid' }, cells);
@@ -92,7 +97,7 @@ export default {
         cell.classList.add('on');
         if (dual) {
           const L = LETTERS[blk.let[i]];
-          if (useSpeech) speak(L); else cell.textContent = L;
+          if (clips) playClip(clips[blk.let[i]]); else if (useSpeech) speak(L); else cell.textContent = L;
         }
         await ctx.wait(500);
         cell.classList.remove('on'); cell.textContent = '';
