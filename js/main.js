@@ -40,7 +40,7 @@ applyTheme();
 // ---------- 每日训练计划 ----------
 // 结构：舒尔特热身 + 3 项核心（5 选 3，五天内每项各出现 3 次）+ 呼吸计数收尾
 const CORE = ['stroop', 'nback', 'sart', 'mot', 'arith'];
-function makePlan(date) {
+export function makePlan(date) {
   const day = Math.floor(Date.parse(`${date}T00:00:00`) / 864e5);
   return ['schulte', ...[0, 2, 4].map(k => CORE[(day + k) % CORE.length]), 'breath'];
 }
@@ -457,6 +457,20 @@ function renderStats() {
     },
   });
   const setRow = (title, sub, ctrl) => h('div', { class: 'set-row' }, h('div', {}, h('b', {}, title), sub ? h('small', {}, sub) : null), ctrl);
+  // 每日提醒和桌面小组件：只有安卓 App 里有（由 App 的外壳 NingshenShell 提供），网页版没有这两行
+  const host = window.NingshenShell;
+  let remindRow = null;
+  const widgetRow = host && host.widgetPin
+    ? setRow('桌面小组件', '把「今日五环」放到手机桌面上，点一下接着练', h('button', { class: 'btn sm', onclick: () => host.widgetPin() }, '添加到桌面'))
+    : null;
+  if (host && host.reminderGet) {
+    const cur = JSON.parse(host.reminderGet()); // {on, time}
+    let on = !!cur.on;
+    const timeIn = h('input', { class: 'input num', type: 'time', value: cur.time, 'aria-label': '提醒时间', style: { width: '120px' } });
+    timeIn.addEventListener('change', () => { if (on) host.reminderSet(true, timeIn.value || cur.time); });
+    remindRow = setRow('每日提醒', '到点提醒今天还没练的训练。练完了就不提醒，也不记连续天数',
+      h('div', { class: 'row' }, timeIn, opts([[true, '开'], [false, '关']], on, v => { on = v; host.reminderSet(v, timeIn.value || cur.time); })));
+  }
 
   app.append(
     h('section', { class: 'page-head' },
@@ -477,6 +491,8 @@ function renderStats() {
       setRow('每周目标', '用目标天数代替连续打卡，允许请假', opts([3, 4, 5, 6, 7].map(n => [n, `${n} 天`]), S.settings().weekGoal || 5, v => S.setSetting('weekGoal', v))),
       setRow('外观', null, opts([['dark', '深色'], ['light', '浅色'], ['auto', '跟随系统']], S.settings().theme || 'dark', v => { S.setSetting('theme', v); applyTheme(); })),
       setRow('音效', '答对、答错和倒计时的提示音', opts([[true, '开'], [false, '关']], !!S.settings().sound, v => { S.setSetting('sound', v); setSound(v); })),
+      remindRow,
+      widgetRow,
       setRow('备份', '导出为 JSON 文件，可在别的设备导入', h('div', { class: 'row' },
         h('button', {
           class: 'btn sm', onclick: () => {
