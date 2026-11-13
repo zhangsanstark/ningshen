@@ -1,26 +1,47 @@
 import { h, rand, pick, numpad, mean } from '../ui.js';
 import { levelNote } from './common.js';
 
-// 按等级出题，保证结果为非负整数
-function makeProblem(level) {
-  const L = Math.max(1, Math.min(10, level));
-  const ops = [];
-  const add = (a, b) => ({ q: `${a} + ${b}`, a: a + b });
-  const sub = (a, b) => (a < b ? { q: `${b} − ${a}`, a: b - a } : { q: `${a} − ${b}`, a: a - b });
-  const mul = (a, b) => ({ q: `${a} × ${b}`, a: a * b });
-  const div = (a, b) => ({ q: `${a * b} ÷ ${a}`, a: b });
-  if (L === 1) ops.push(() => add(rand(1, 9), rand(1, 9)));
-  if (L >= 2 && L <= 3) ops.push(() => add(rand(1, 9), rand(1, 9)), () => sub(rand(2, 18), rand(1, 9)));
-  if (L >= 3 && L <= 5) ops.push(() => add(rand(10, 99), rand(2, 9)), () => sub(rand(20, 99), rand(2, 9)));
-  if (L >= 4) ops.push(() => add(rand(11, 89), rand(11, 89)), () => sub(rand(30, 99), rand(11, 29)));
-  if (L >= 5) ops.push(() => mul(rand(2, 9), rand(2, 9)));
-  if (L >= 6) ops.push(() => div(rand(2, 9), rand(2, 9)));
-  if (L >= 7) ops.push(() => mul(rand(11, 49), rand(2, 9)), () => add(rand(100, 899), rand(11, 99)));
-  if (L >= 8) ops.push(() => { const a = rand(11, 59), b = rand(11, 39), c = rand(2, 20); return { q: `${a} + ${b} − ${c}`, a: a + b - c }; });
-  if (L >= 9) ops.push(() => mul(rand(11, 25), rand(11, 19)), () => div(rand(11, 19), rand(3, 9)));
-  if (L >= 10) ops.push(() => sub(rand(300, 999), rand(101, 299)), () => { const a = rand(3, 9), b = rand(3, 9), c = rand(11, 49); return { q: `${a} × ${b} + ${c}`, a: a * b + c }; });
-  return pick(ops)();
+// 按等级出题，结果都是非负整数。
+// 最低一级就是两位数；一位数只出现在「3 × 4 + 5 × 6」这类连算题里。从第 5 级起有三位数。
+const add = (a, b) => ({ q: `${a} + ${b}`, a: a + b });
+const sub = (a, b) => (a === b ? sub(a, b - 1) : a < b ? { q: `${b} − ${a}`, a: b - a } : { q: `${a} − ${b}`, a: a - b }); // 不出结果是 0 的题
+const mul = (a, b) => ({ q: `${a} × ${b}`, a: a * b });
+const div = (a, b) => ({ q: `${a * b} ÷ ${a}`, a: b });
+// 两个乘积相加、相减：3 × 4 + 5 × 6
+const mulAdd = (a, b, c, d) => ({ q: `${a} × ${b} + ${c} × ${d}`, a: a * b + c * d });
+const mulSub = (a, b, c, d) => (a * b < c * d ? mulSub(c, d, a, b) : { q: `${a} × ${b} − ${c} × ${d}`, a: a * b - c * d });
+// 三个数连加减：58 + 36 − 27
+const chain = (lo, hi) => { const a = rand(lo, hi), b = rand(lo, hi), c = rand(lo, Math.min(hi, a + b)); return { q: `${a} + ${b} − ${c}`, a: a + b - c }; };
+const d1 = () => rand(2, 9), d2 = () => rand(12, 98), d3 = () => rand(101, 899);
+
+// [从第几级, 到第几级, 出题]：每一级从覆盖它的题型里随机抽
+const TYPES = [
+  [1, 1, () => add(rand(12, 89), rand(3, 9))],              // 47 + 8
+  [1, 1, () => sub(rand(21, 98), rand(3, 9))],              // 63 − 7
+  [2, 4, () => add(rand(12, 88), rand(12, 88))],            // 34 + 58
+  [2, 4, () => sub(d2(), d2())],                            // 81 − 37
+  [3, 5, () => mulAdd(d1(), d1(), d1(), d1())],             // 3 × 4 + 5 × 6
+  [4, 6, () => mulSub(d1(), d1(), d1(), d1())],             // 7 × 8 − 3 × 6
+  [4, 6, () => mul(rand(12, 49), d1())],                    // 23 × 4
+  [5, 7, () => add(d3(), d2())],                            // 347 + 68
+  [5, 7, () => sub(rand(101, 999), d2())],                  // 512 − 47
+  [6, 8, () => div(rand(3, 9), rand(12, 49))],              // 138 ÷ 6
+  [6, 9, () => add(d3(), d3())],                            // 347 + 268
+  [6, 9, () => sub(rand(101, 999), rand(101, 999))],        // 803 − 256
+  [7, 9, () => chain(12, 98)],                              // 58 + 36 − 27
+  [7, 9, () => { const p = mul(rand(12, 39), d1()), c = d2(); return { q: `${p.q} + ${c}`, a: p.a + c }; }], // 23 × 4 + 57
+  [8, 10, () => mul(rand(11, 19), rand(11, 19))],           // 14 × 17
+  [8, 10, () => mul(rand(102, 499), rand(3, 9))],           // 236 × 4
+  [9, 10, () => mulAdd(rand(12, 29), d1(), d1(), d1())],    // 23 × 4 + 6 × 7
+  [10, 10, () => mul(rand(12, 39), rand(12, 29))],          // 27 × 18
+  [10, 10, () => chain(101, 899)],                          // 347 + 268 − 159
+];
+export function makeProblem(level) {
+  const L = Math.max(1, Math.min(10, Math.round(level)));
+  return pick(TYPES.filter(([lo, hi]) => L >= lo && L <= hi))[2]();
 }
+// 升级要达到的速度：每分钟答对几题。题越难，要求的题数越少
+const PACE = [12, 10, 9, 8, 7, 6, 5, 4, 4, 4];
 
 export default {
   id: 'arith',
@@ -29,7 +50,7 @@ export default {
   dim: '持续注意 · 工作记忆',
   desc: '在限定时间内尽可能多地答对算术题。克雷佩林模式只做相邻两个数字相加，用来观察注意力随时间的波动。',
   howto: [
-    '综合心算：题目难度随等级自适应，用键盘或屏幕数字键输入答案，回车确认。',
+    '综合心算：从两位数加减起步，等级越高数字越大，到三位数；中间还有「3 × 4 + 5 × 6」这样的连算题。用键盘或屏幕数字键输入答案，回车确认。',
     '克雷佩林：两个一位数相加，只输入结果的个位数（例如 7+8=15，输入 5），按键即提交。',
     '准确优先，再追求速度；答错会显示正确答案。',
   ],
@@ -44,7 +65,7 @@ export default {
   run(ctx) {
     const { mode, dur } = ctx.opts;
     const kp = mode === 'kraepelin';
-    const level = ctx.level ?? 1;
+    const level = Math.max(1, Math.min(10, Math.round(ctx.level ?? 1)));
     const durMs = dur * 1000;
     let cur, input = '', correct = 0, wrong = 0, shownAt = 0;
     const times = [];
@@ -60,6 +81,7 @@ export default {
       if (kp) { const a = rand(1, 9), b = rand(1, 9); cur = { q: `${a} + ${b}`, a: (a + b) % 10 }; }
       else cur = makeProblem(level);
       qEl.textContent = cur.q;
+      qEl.classList.toggle('long', cur.q.length > 12); // 四个数的连算题比较长，字号小一点，窄屏上才放得下
       input = ''; aEl.textContent = kp ? '?' : ' ';
       shownAt = performance.now();
     };
@@ -107,9 +129,11 @@ export default {
           const acc = total ? correct / total : 0;
           let newLevel = level;
           if (!kp) {
-            const avg = mean(times) / 1000;
-            if (acc >= 0.9 && correct >= dur / 6 && avg < 5) newLevel = Math.min(10, level + 1);
-            else if (acc < 0.7 || correct < dur / 20) newLevel = Math.max(1, level - 1);
+            // 又准又够快就升一级；明显有余力（快出一大截、几乎全对）直接升两级，不用一级一级磨
+            const need = PACE[level - 1] * dur / 60;
+            if (acc >= 0.95 && correct >= need * 1.6) newLevel = Math.min(10, level + 2);
+            else if (acc >= 0.9 && correct >= need) newLevel = Math.min(10, level + 1);
+            else if (acc < 0.7 || correct < need / 3) newLevel = Math.max(1, level - 1);
           }
           const metrics = [
             ['正确率', `${Math.round(acc * 100)}%`],

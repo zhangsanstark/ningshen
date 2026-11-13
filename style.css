@@ -363,6 +363,7 @@ body.playing { overflow: hidden; }
 .timebar { width: 100%; max-width: 330px; height: 5px; background: var(--stroke); border-radius: 3px; overflow: hidden; }
 .timebar > div { height: 100%; width: 100%; background: var(--grad); border-radius: 3px; transition: width .1s linear; }
 .arith-q { font: 700 clamp(50px, 14vw, 76px)/1.1 var(--font-num); font-variant-numeric: tabular-nums; letter-spacing: .02em; margin-top: 8px; }
+.arith-q.long { font-size: clamp(36px, 10.5vw, 64px); white-space: nowrap; }
 .arith-a { min-width: 200px; height: 66px; font: 700 46px/62px var(--font-num); text-align: center; border-bottom: 2px solid var(--stroke-2); font-variant-numeric: tabular-nums; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .arith-a.good { animation: okflash .35s; }
 .arith-a.bad { animation: badflash .45s; }
