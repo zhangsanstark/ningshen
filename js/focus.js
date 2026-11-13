@@ -1,11 +1,14 @@
 // 专注计时（番茄钟）：把训练和真实任务连接起来
-import { h, ico, chime, barChart } from './ui.js';
+import { h, ico, chime, barChart, setNoise } from './ui.js';
 import { clockDial } from './figures.js';
 import * as S from './store.js';
 
 const PRESETS = [[25, 5], [50, 10], [15, 3]];
 const TITLE = '凝神';
 const RUN_KEY = 'zzl.focus.run';
+const SOUND_KEY = 'zzl.focus.sound';
+// 背景音：三种噪音（白、粉、褐），按听感起名
+const SOUNDS = [['off', '关', '不放背景音'], ['white', '清亮', '白噪音'], ['pink', '柔和', '粉噪音'], ['brown', '低沉', '褐噪音']];
 const STALE_MS = 12 * 3600e3; // 超过 12 小时的计时不再恢复
 
 // 进行中的计时：{task, planMin, breakMin, kind:'focus'|'break', start, pausedAt, pausedMs, distractions, done?, away?}
@@ -25,7 +28,25 @@ function loadRun() {
 // 每次状态变化都存一次盘：手机切到别的应用后，浏览器随时可能把页面回收
 function persist() {
   try { T ? localStorage.setItem(RUN_KEY, JSON.stringify(T)) : localStorage.removeItem(RUN_KEY); } catch { /* 存不了就只留在内存里 */ }
+  syncSound();
 }
+const soundPref = () => { try { return localStorage.getItem(SOUND_KEY) || 'off'; } catch { return 'off'; } };
+// 背景音只在专注进行中播放：暂停、休息、走完之后都停
+function syncSound() {
+  clearTimeout(preview);
+  setNoise(T && T.kind === 'focus' && !T.done && T.pausedAt == null ? soundPref() : 'off');
+}
+let preview = null;
+// 选背景音的那一行。没在计时的时候点一下，先放两三秒试听
+const soundRow = () => h('div', { class: 'mins' }, '背景音', h('div', { class: 'opts' }, SOUNDS.map(([v, label, title]) => h('button', {
+  class: soundPref() === v ? 'on' : '', title,
+  onclick: e => {
+    try { localStorage.setItem(SOUND_KEY, v); } catch { }
+    e.currentTarget.parentNode.querySelectorAll('button').forEach(b => b.classList.toggle('on', b === e.currentTarget));
+    syncSound();
+    if (!T) { setNoise(v); preview = setTimeout(syncSound, 2600); }
+  },
+}, label))));
 const totalMs = () => (T.kind === 'focus' ? T.planMin : T.breakMin) * 60000;
 const remaining = () => {
   if (!T) return 0;
@@ -74,10 +95,16 @@ function ensureTick() {
 }
 
 function finishPhase() {
-  chime();
-  try { if (Notification?.permission === 'granted') new Notification(T.kind === 'focus' ? '专注完成，休息一下' : '休息结束'); } catch { }
+  // 页面被系统冻住过（手机锁屏、切到别的应用）再醒来时，计时其实早就走完了：
+  // 时长按预定的结束时刻算，不能把冻住的那段也算进去；迟到的提示音也不用再响
+  const end = T.start + T.pausedMs + totalMs();
+  const late = Date.now() - end > 3000;
+  if (!late) {
+    chime();
+    try { if (Notification?.permission === 'granted') new Notification(T.kind === 'focus' ? '专注完成，休息一下' : '休息结束'); } catch { }
+  }
   if (T.kind === 'focus') {
-    T.done = true; T.pausedAt = Date.now(); persist();
+    T.done = true; T.pausedAt = late ? end : Date.now(); if (late) T.away = true; persist();
     // 专注走完时要记录走神次数和自评：不在专注页就带过去
     if (onFocusPage()) refresh(); else location.hash = '#/focus';
   } else {
@@ -90,6 +117,7 @@ function finishPhase() {
 export function resumeFocus() {
   settle();
   if (T && !T.done) { ensureTick(); if (T.pausedAt == null) lock(true); }
+  syncSound();
 }
 
 // 给首页用：现在有没有计时在走
@@ -154,7 +182,8 @@ export function renderFocus(root, still = false) {
         task,
         presetRow,
         h('div', { class: 'mins' }, '专注', planIn, '分钟', h('span', { style: { width: '10px' } }), '休息', brkIn, '分钟'),
-        h('button', { class: 'btn primary lg', onclick: begin }, '开始专注', ico('arrow', 'go'))));
+        h('button', { class: 'btn primary lg', onclick: begin }, '开始专注', ico('arrow', 'go')),
+        soundRow()));  // 背景音是可选的，放在「开始专注」下面，不把主按钮挤出第一屏
   } else if (T.kind === 'focus' && T.done) {
     // 专注完成：自评
     let rating = 0;
@@ -210,7 +239,8 @@ export function renderFocus(root, still = false) {
             if (isFocus && !confirm('放弃这次专注？不会保存记录。')) return;
             T = null; persist(); lock(false); document.title = TITLE; refresh();
           },
-        }, isFocus ? '放弃' : '跳过休息')));
+        }, isFocus ? '放弃' : '跳过休息')),
+      isFocus ? soundRow() : null);
     ensureTick();
   }
 

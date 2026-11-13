@@ -103,6 +103,66 @@ export function tick() {
   try { tone(620, 0.07, 0.05); } catch { }
 }
 
+// ---------- 背景音：三种噪音，现算现播，不用音频文件 ----------
+// white 各个频率一样多，听着清亮；pink 频率越高越少，柔和一些；brown 更偏低频，低沉
+// 返回 n 个采样，可以首尾相接循环播放
+export function noiseSamples(kind, n) {
+  const warm = 4096, fade = Math.min(8192, n >> 2);
+  const g = new Float32Array(warm + n + fade);
+  const white = () => Math.random() * 2 - 1;
+  if (kind === 'pink') { // Paul Kellet 的近似：白噪音过一组一阶滤波再相加
+    let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+    for (let i = 0; i < g.length; i++) {
+      const w = white();
+      b0 = 0.99886 * b0 + w * 0.0555179; b1 = 0.99332 * b1 + w * 0.0750759; b2 = 0.969 * b2 + w * 0.153852;
+      b3 = 0.8665 * b3 + w * 0.3104856; b4 = 0.55 * b4 + w * 0.5329522; b5 = -0.7616 * b5 - w * 0.016898;
+      g[i] = b0 + b1 + b2 + b3 + b4 + b5 + b6 + w * 0.5362; b6 = w * 0.115926;
+    }
+  } else if (kind === 'brown') { // 把白噪音一点点累加起来
+    let last = 0;
+    for (let i = 0; i < g.length; i++) { last = (last + 0.02 * white()) / 1.02; g[i] = last; }
+  } else for (let i = 0; i < g.length; i++) g[i] = white();
+  // 开头一小段和结尾之后的那一段交叠起来：循环播放时接缝处是连着的，没有「咔」的一声
+  const out = g.slice(warm, warm + n);
+  for (let i = 0; i < fade; i++) {
+    const a = (i / fade) * Math.PI / 2;
+    out[i] = out[i] * Math.sin(a) + g[warm + n + i] * Math.cos(a);
+  }
+  // 三种噪音调到同样的平均强度
+  let sum = 0;
+  for (let i = 0; i < n; i++) sum += out[i] * out[i];
+  const k = 0.2 / Math.sqrt(sum / n || 1);
+  for (let i = 0; i < n; i++) out[i] = clamp(out[i] * k, -1, 1);
+  return out;
+}
+const NOISE_LEVEL = { white: 0.14, pink: 0.3, brown: 0.6 }; // 清亮的最刺耳，放得最轻
+let noise = null; // 正在播的那一路：{kind, src, gain}
+// 播放（或换成）某一种背景音；传 'off' 停掉。不受「音效」开关影响，它有自己的选项
+export function setNoise(kind) {
+  try {
+    if (!NOISE_LEVEL[kind]) kind = 'off';
+    if (noise && noise.kind === kind) return;
+    if (noise) { // 先把正在播的淡出
+      const { src, gain } = noise; noise = null;
+      gain.gain.setTargetAtTime(0, actx.currentTime, 0.1);
+      src.stop(actx.currentTime + 0.6);
+    }
+    if (kind === 'off') return;
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+    const n = Math.round(actx.sampleRate * 5);
+    const buf = actx.createBuffer(2, n, actx.sampleRate);
+    for (let ch = 0; ch < 2; ch++) buf.getChannelData(ch).set(noiseSamples(kind, n)); // 左右各算一份，听起来更开阔
+    const src = actx.createBufferSource(), gain = actx.createGain();
+    src.buffer = buf; src.loop = true;
+    gain.gain.setValueAtTime(0, actx.currentTime);
+    gain.gain.setTargetAtTime(NOISE_LEVEL[kind], actx.currentTime, 0.35);
+    src.connect(gain).connect(actx.destination);
+    src.start();
+    noise = { kind, src, gain };
+  } catch { /* 没有声音也不影响计时 */ }
+}
+
 // ---------- 图表：墨线，最新的一点是朱红 ----------
 // 迷你走势线
 export function sparkline(values, { w = 64, hgt = 18 } = {}) {
